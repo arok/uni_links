@@ -6,8 +6,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-const MethodChannel _mChannel = const MethodChannel('uni_links/messages');
-const EventChannel _eChannel = const EventChannel('uni_links/events');
+const MethodChannel _mChannel = MethodChannel('uni_links/messages');
+const EventChannel _eChannel = EventChannel('uni_links/events');
 Stream<String> _stream;
 
 /// Returns a [Future], which completes to one of the following:
@@ -16,6 +16,11 @@ Stream<String> _stream;
 ///   * a [PlatformException], if the invocation failed in the platform plugin.
 Future<String> getInitialLink() async {
   final String initialLink = await _mChannel.invokeMethod('getInitialLink');
+  return initialLink;
+}
+
+Future<String> getLatestLink() async {
+  final String initialLink = await _mChannel.invokeMethod('getLatestLink');
   return initialLink;
 }
 
@@ -47,10 +52,7 @@ Future<Uri> getInitialUri() async {
 /// If the app was stared by a link intent or user activity the stream will
 /// not emit that initial one - query either the `getInitialLink` instead.
 Stream<String> getLinksStream() {
-  if (_stream == null) {
-    _stream = _eChannel.receiveBroadcastStream().cast<String>();
-  }
-  return _stream;
+  return _stream ??= _eChannel.receiveBroadcastStream().cast<String>();
 }
 
 /// A convenience transformation of the stream to a `Stream<Uri>`.
@@ -64,7 +66,7 @@ Stream<String> getLinksStream() {
 /// not emit that initial uri - query either the `getInitialUri` instead.
 Stream<Uri> getUriLinksStream() {
   return getLinksStream().transform<Uri>(
-    new StreamTransformer<String, Uri>.fromHandlers(
+    StreamTransformer<String, Uri>.fromHandlers(
       handleData: (String link, EventSink<Uri> sink) {
         if (link == null) {
           sink.add(null);
@@ -74,4 +76,8 @@ Stream<Uri> getUriLinksStream() {
       },
     ),
   );
+}
+
+Future<void> clearLink() {
+  return _mChannel.invokeMethod('clear');
 }

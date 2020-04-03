@@ -14,9 +14,6 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-//import android.content.IntentFilter;
-//import android.util.Log;
-
 /** UniLinksPlugin */
 public class UniLinksPlugin
     implements MethodCallHandler, StreamHandler, PluginRegistry.NewIntentListener {
@@ -26,6 +23,7 @@ public class UniLinksPlugin
   private BroadcastReceiver changeReceiver;
   private Registrar registrar;
 
+  private String initialLink;
   private String latestLink;
 
   /** Plugin registration. */
@@ -56,7 +54,8 @@ public class UniLinksPlugin
     String dataString = intent.getDataString();
 
     if (Intent.ACTION_VIEW.equals(action)) {
-      if (dataString != null) latestLink = dataString;
+      if (initial) initialLink = dataString;
+      latestLink = dataString;
       if (changeReceiver != null) changeReceiver.onReceive(context, intent);
     }
   }
@@ -64,7 +63,13 @@ public class UniLinksPlugin
   @Override
   public void onMethodCall(MethodCall call, Result result) {
     if (call.method.equals("getInitialLink")) {
+      result.success(initialLink);
+    } else if (call.method.equals("getLatestLink")) {
       result.success(latestLink);
+    } else if (call.method.equals("clear")) {
+      initialLink = null;
+      latestLink = null;
+      if (changeReceiver != null) changeReceiver.onReceive(registrar.context(), null);
     } else {
       result.notImplemented();
     }
@@ -99,8 +104,10 @@ public class UniLinksPlugin
         // NOTE: assuming intent.getAction() is Intent.ACTION_VIEW
 
         // Log.v("uni_links", String.format("received action: %s", intent.getAction()));
-
-        String dataString = intent.getDataString();
+        String dataString = "";
+        if (intent != null) {
+          dataString = intent.getDataString();
+        }
 
         if (dataString == null) {
           events.error("UNAVAILABLE", "Link unavailable", null);
